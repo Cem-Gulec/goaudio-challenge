@@ -48,6 +48,21 @@ def is_environment_description(text):
         
     return False
 
+def parse_character_line(line):
+    """
+    Parses a character line that might include an emotional indication.
+    Returns a tuple of (character_name, emotion) or just (character_name, None)
+    """
+    # Pattern to match character name with optional emotion in parentheses
+    pattern = r'^(Emma|Leo)(?:\s*\((.*?)\))?$'
+    match = re.match(pattern, line)
+    
+    if match:
+        character_name = match.group(1)
+        emotion = match.group(2)  # Will be None if no parentheses
+        return character_name, emotion
+    return None, None
+
 def parse_character_content(text):
     """
     Parses content containing character lines and additional descriptions.
@@ -56,6 +71,7 @@ def parse_character_content(text):
     lines = text.split('\n')
     parsed_lines = []
     current_character = None
+    current_emotion = None
     current_dialogue = []
     
     for line in lines:
@@ -69,9 +85,11 @@ def parse_character_content(text):
                 parsed_lines.append({
                     'type': 'dialogue',
                     'character': current_character,
+                    'emotion': current_emotion,
                     'content': '\n'.join(current_dialogue)
                 })
                 current_character = None
+                current_emotion = None
                 current_dialogue = []
             parsed_lines.append({
                 'type': 'environment',
@@ -85,9 +103,11 @@ def parse_character_content(text):
                 parsed_lines.append({
                     'type': 'dialogue',
                     'character': current_character,
+                    'emotion': current_emotion,
                     'content': '\n'.join(current_dialogue)
                 })
                 current_character = None
+                current_emotion = None
                 current_dialogue = []
             parsed_lines.append({
                 'type': 'description',
@@ -95,16 +115,19 @@ def parse_character_content(text):
             })
             continue
             
-        # Check for character names (Emma or Leo)
-        if line in ['Emma', 'Leo']:
+        # Check for character names (with possible emotion)
+        character, emotion = parse_character_line(line)
+        if character:
             if current_character and current_dialogue:
                 parsed_lines.append({
                     'type': 'dialogue',
                     'character': current_character,
+                    'emotion': current_emotion,
                     'content': '\n'.join(current_dialogue)
                 })
                 current_dialogue = []
-            current_character = line
+            current_character = character
+            current_emotion = emotion
         else:
             if current_character:
                 current_dialogue.append(line)
@@ -114,6 +137,7 @@ def parse_character_content(text):
         parsed_lines.append({
             'type': 'dialogue',
             'character': current_character,
+            'emotion': current_emotion,
             'content': '\n'.join(current_dialogue)
         })
     
@@ -158,7 +182,8 @@ def main():
             print(f"\n[Additional Description]:\n{item['content']}")
         
         elif item['type'] == 'dialogue':
-            print(f"\n[{item['character']}]:")
+            emotion_str = f" ({item['emotion']})" if item['emotion'] else ""
+            print(f"\n[{item['character']}{emotion_str}]:")
             print(f"{item['content']}")
 
 if __name__ == "__main__":
