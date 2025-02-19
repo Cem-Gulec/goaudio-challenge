@@ -170,3 +170,4 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 openai-output.mp3
+*.mp3
