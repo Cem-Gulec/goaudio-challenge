@@ -1,8 +1,11 @@
+import os
 from pathlib import Path
 from openai import OpenAI
+from dotenv import load_dotenv
 
 # initialize the OpenAI API client
-api_key = ""
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
 # sample text to generate speech from
