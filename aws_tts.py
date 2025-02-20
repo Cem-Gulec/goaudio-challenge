@@ -6,65 +6,103 @@ from pydub import AudioSegment
 import io
 
 def parse_dialogue(text):
+    """Parse dialogue with emotion tags"""
     lines = text.strip().split('\n')
-    current_speaker = None
     dialogue_parts = []
-    current_line = ""
     
-    for line in lines:
-        line = line.strip()
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
         if not line:  # Skip empty lines
+            i += 1
             continue
             
-        speaker_match = re.match(r'\[(\w+)\]:', line)
+        # Check for speaker line with potential emotion
+        speaker_match = re.match(r'(\w+)(?:\s*\((.*?)\))?$', line)
         if speaker_match:
-            # If we have a previous speaker and line, save it before starting new one
-            if current_speaker and current_line:
-                dialogue_parts.append((current_speaker, current_line.strip()))
+            speaker = speaker_match.group(1)
+            emotion = speaker_match.group(2) if speaker_match.group(2) else None
             
-            # Start new speaker and line
-            current_speaker = speaker_match.group(1)
-            # Remove the speaker tag from the line
-            current_line = re.sub(r'\[\w+\]:', '', line).strip()
-        else:
-            # Only append to current line if we have a current speaker
-            if current_speaker:
-                current_line += " " + line
-    
-    if current_speaker and current_line:
-        dialogue_parts.append((current_speaker, current_line.strip()))
+            # Look for the next non-empty line as the dialogue
+            i += 1
+            while i < len(lines) and not lines[i].strip():
+                i += 1
+                
+            if i < len(lines):
+                dialogue_line = lines[i].strip()
+                dialogue_parts.append((speaker, dialogue_line, emotion))
+        i += 1
     
     return dialogue_parts
 
-def synthesize_speech(polly_client, text, voice_id):
-    """Synthesize speech using Amazon Polly and return AudioSegment"""
-    response = polly_client.synthesize_speech(
-        VoiceId=voice_id,
-        OutputFormat='mp3',
-        Text=text,
-        Engine='neural',
-        LanguageCode='de-DE'
-    )
+def get_ssml_with_emotion(text, emotion=None):
+    """Generate SSML text with supported tags based on emotion"""
+    # Escape special characters for SSML
+    text = text.replace('&', '&amp;')
+    text = text.replace('"', '&quot;')
+    text = text.replace("'", '&apos;')
+    text = text.replace('<', '&lt;')
+    text = text.replace('>', '&gt;')
     
-    # Convert the audio stream to AudioSegment
-    audio_stream = io.BytesIO(response['AudioStream'].read())
-    return AudioSegment.from_mp3(audio_stream)
+    if emotion and emotion.lower() == 'besorgt':  # worried
+        # Add breaks and sentence structure for worried tone
+        ssml = (
+            '<speak><p><s>'
+            f'{text}<break time="300ms"/>'
+            '</s></p></speak>'
+        )
+    else:
+        ssml = f'<speak><p><s>{text}</s></p></speak>'
+    
+    return ssml
+
+def synthesize_speech(polly_client, text, voice_id, emotion=None):
+    """Synthesize speech using Amazon Polly and return AudioSegment"""
+    try:
+        ssml = get_ssml_with_emotion(text, emotion)
+        print(f"Using SSML: {ssml}")
+        
+        response = polly_client.synthesize_speech(
+            VoiceId=voice_id,
+            OutputFormat='mp3',
+            Text=ssml,
+            TextType='ssml',
+            Engine='neural',
+            LanguageCode='de-DE'
+        )
+        
+        # Convert the audio stream to AudioSegment
+        audio_stream = io.BytesIO(response['AudioStream'].read())
+        return AudioSegment.from_mp3(audio_stream)
+        
+    except Exception as e:
+        print(f"Error synthesizing speech: {str(e)}")
+        print("Retrying without SSML...")
+        try:
+            response = polly_client.synthesize_speech(
+                VoiceId=voice_id,
+                OutputFormat='mp3',
+                Text=text,
+                TextType='text',
+                Engine='neural',
+                LanguageCode='de-DE'
+            )
+            audio_stream = io.BytesIO(response['AudioStream'].read())
+            return AudioSegment.from_mp3(audio_stream)
+        except Exception as e:
+            print(f"Error with plain text synthesis: {str(e)}")
+            return AudioSegment.silent(duration=500)
 
 def main():
     load_dotenv()
 
     dialogue = """
-    [Emma]:
-    Also, Leo, was hast du mir hier überhaupt zeigen wollen?
-
-    [Leo]:
-    Geduld, Emma. Es ist ein bisschen… wie soll ich sagen… next-level cool.
-
-    [Emma]:
-    Deine Überraschungen waren nicht immer cool. Erinnere dich an die „Super-Höhle“ voller Spinnen.
-
-    [Leo]:
-    Hey, das war ein Abenteuer! Und diesmal gibt’s keine Spinnen. Versprochen.
+    Emma (besorgt)
+    Leo, ich hab ein really bad feeling about this!
+    Leo
+    Bleib ruhig. Ich glaube… es aktiviert sich… oder so was.
+    Emma
+    Oder so was? Das ist nicht beruhigend!
     """
 
     # Define voice mapping
@@ -86,11 +124,11 @@ def main():
     combined_audio = AudioSegment.empty()
     
     # Add small pause between lines
-    pause = AudioSegment.silent(duration=50) 
+    pause = AudioSegment.silent(duration=500)  # 500ms pause
 
     # Process each line of dialogue
-    for speaker, text in dialogue_parts:
-        print(f"Processing: {speaker}: {text}")
+    for speaker, text, emotion in dialogue_parts:
+        print(f"Processing: {speaker}{' (' + emotion + ')' if emotion else ''}: {text}")
         
         # Get the appropriate voice for the speaker
         voice_id = voice_mapping.get(speaker)
@@ -98,14 +136,14 @@ def main():
             print(f"Warning: No voice mapping for {speaker}, skipping...")
             continue
             
-        # Synthesize the line
-        audio_segment = synthesize_speech(polly_client, text, voice_id)
+        # Synthesize the line with emotion if specified
+        audio_segment = synthesize_speech(polly_client, text, voice_id, emotion)
         
         # Add to combined audio with pause
         combined_audio += audio_segment + pause
 
     # Export the final audio file
-    output_file = "dialogue.mp3"
+    output_file = "dialogue_with_emotion.mp3"
     combined_audio.export(output_file, format="mp3")
     print(f"Audio saved to {output_file}")
 
