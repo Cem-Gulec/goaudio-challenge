@@ -35,6 +35,10 @@ def parse_dialogue(text):
     
     return dialogue_parts
 
+def get_voice_id(speaker, voice_ids):
+    """Get the voice ID for a given speaker."""
+    return voice_ids.get(speaker.lower(), None)
+
 def main():
     # Initialize the client
     load_dotenv()
@@ -45,8 +49,13 @@ def main():
     
     client = ElevenLabs(api_key=api_key)
 
-    emma_voice_id = "nF7t9cuYo0u3kuVI9q4B"
-    leo_voice_id = "LBdEwXpO9YwPdF4PqCd9"
+    # Map character names to their voice IDs using default voices
+    # Rachel for Emma and Josh for Leo
+    voice_ids = {
+        'emma': "21m00Tcm4TlvDq8ikWAM",
+        'leo': "TxGEqnHWrfWFTfGW9XjX"
+    }
+
     dialogue = """
     [Emma]:
     Also, Leo, was hast du mir hier überhaupt zeigen wollen?
@@ -63,18 +72,24 @@ def main():
 
     dialogue_parts = parse_dialogue(dialogue)
 
-    for line in dialogue_parts:
-        print(f"{line}\n")
-
-    audio = client.text_to_speech.convert(
-        text="The first move is what sets everything in motion.",
-        voice_id="JBFqnCBsd6RMkjVDRZzb",
-        model_id="eleven_multilingual_v2",
-        output_format="mp3_44100_128",
-    )
-
-    play(audio)
-
+    # Process and play each line with the appropriate voice
+    for speaker, text in dialogue_parts:
+        print(f"Speaking ({speaker}): {text}")
+        
+        voice_id = get_voice_id(speaker, voice_ids)
+        if voice_id:
+            try:
+                audio = client.text_to_speech.convert(
+                    text=text,
+                    voice_id=voice_id,
+                    model_id="eleven_multilingual_v2",
+                    output_format="mp3_44100_128",
+                )
+                play(audio)
+            except Exception as e:
+                print(f"Error converting text to speech for {speaker}: {e}")
+        else:
+            print(f"No voice ID found for speaker: {speaker}")
 
 if __name__ == "__main__":
     main()
