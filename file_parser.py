@@ -5,29 +5,38 @@ def clean_environment_description(text):
     """
     Cleans and formats environment descriptions by:
     1. Removing excess asterisks
-    2. Handling bullet points
+    2. Separating main description from background descriptions
     3. Preserving line breaks
     4. Removing extra whitespace
     """
     # Remove all asterisks from start and end
     text = text.strip('*').strip()
     
-    # Split into lines and clean each line
+    # Split into lines
     lines = text.split('\n')
-    cleaned_lines = []
+    main_description = []
+    background_descriptions = []
     
     for line in lines:
         # Remove leading/trailing whitespace and asterisks
         line = line.strip().strip('*').strip()
         
-        # Remove bullet points (both • and - characters) and clean up
-        line = re.sub(r'^[•-]\s*', '', line).strip()
-        
-        # Only add non-empty lines
-        if line:  
-            cleaned_lines.append(line)
+        # Check if line is a bullet point (background description)
+        if re.match(r'^[•\t]+.*$', line):
+            # Remove the bullet point and clean up
+            cleaned_line = re.sub(r'^[•\t]+\s*', '', line).strip()
+            if cleaned_line:
+                background_descriptions.append(cleaned_line)
+        else:
+            # Remove any remaining bullet points or dashes
+            line = re.sub(r'^[•-]\s*', '', line).strip()
+            if line:
+                main_description.append(line)
     
-    return '\n'.join(cleaned_lines)
+    return {
+        'main': '\n'.join(main_description),
+        'background': background_descriptions
+    }
 
 def is_environment_description(text):
     """
@@ -53,7 +62,6 @@ def parse_character_line(line):
     Parses a character line that might include an emotional indication.
     Returns a tuple of (character_name, emotion) or just (character_name, None)
     """
-    # Pattern to match character name with optional emotion in parentheses
     pattern = r'^(Emma|Leo)(?:\s*\((.*?)\))?$'
     match = re.match(pattern, line)
     
@@ -91,10 +99,18 @@ def parse_character_content(text):
                 current_character = None
                 current_emotion = None
                 current_dialogue = []
-            parsed_lines.append({
-                'type': 'environment',
-                'content': clean_environment_description(line)
-            })
+            
+            cleaned_env = clean_environment_description(line)
+            if cleaned_env['main']:
+                parsed_lines.append({
+                    'type': 'environment',
+                    'content': cleaned_env['main']
+                })
+            if cleaned_env['background']:
+                parsed_lines.append({
+                    'type': 'background',
+                    'content': cleaned_env['background']
+                })
             continue
             
         # Check for additional descriptions (starting with -)
@@ -115,7 +131,6 @@ def parse_character_content(text):
             })
             continue
             
-        # Check for character names (with possible emotion)
         character, emotion = parse_character_line(line)
         if character:
             if current_character and current_dialogue:
@@ -158,10 +173,17 @@ def read_docx(file_path):
                 
                 # Check if the entire cell is an environment description
                 if is_environment_description(cell_text) and not any(name in cell_text for name in ['Emma', 'Leo']):
-                    parsed_content.append({
-                        'type': 'environment',
-                        'content': clean_environment_description(cell_text)
-                    })
+                    cleaned_env = clean_environment_description(cell_text)
+                    if cleaned_env['main']:
+                        parsed_content.append({
+                            'type': 'environment',
+                            'content': cleaned_env['main']
+                        })
+                    if cleaned_env['background']:
+                        parsed_content.append({
+                            'type': 'background',
+                            'content': cleaned_env['background']
+                        })
                 else:
                     # Parse mixed content (character lines and descriptions)
                     parsed_content.extend(parse_character_content(cell_text))
@@ -175,7 +197,11 @@ def main():
     for item in content:
         if item['type'] == 'environment':
             print("\n[Environment Description]:")
-            for line in item['content'].split('\n'):
+            print(item['content'])
+        
+        elif item['type'] == 'background':
+            print("\n[Background Description]:")
+            for line in item['content']:
                 print(f"{line}")
         
         elif item['type'] == 'description':
