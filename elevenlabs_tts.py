@@ -1,6 +1,8 @@
 import re
 import os
 from dotenv import load_dotenv
+from elevenlabs.client import ElevenLabs
+from elevenlabs import play
 
 def parse_dialogue(text):
     lines = text.strip().split('\n')
@@ -34,6 +36,17 @@ def parse_dialogue(text):
     return dialogue_parts
 
 def main():
+    # Initialize the client
+    load_dotenv()
+    api_key = os.getenv("ELEVENLABS_API_KEY")
+
+    if not api_key:
+        raise ValueError("ELEVENLABS_API_KEY not found in environment variables")
+    
+    client = ElevenLabs(api_key=api_key)
+
+    emma_voice_id = "nF7t9cuYo0u3kuVI9q4B"
+    leo_voice_id = "LBdEwXpO9YwPdF4PqCd9"
     dialogue = """
     [Emma]:
     Also, Leo, was hast du mir hier überhaupt zeigen wollen?
@@ -47,15 +60,21 @@ def main():
     [Leo]:
     Hey, das war ein Abenteuer! Und diesmal gibt’s keine Spinnen. Versprochen.
     """
-    
-    # Initialize the client
-    load_dotenv()
-    api_key = os.getenv("ELEVENLABS_API_KEY")
 
     dialogue_parts = parse_dialogue(dialogue)
 
     for line in dialogue_parts:
         print(f"{line}\n")
+
+    audio = client.text_to_speech.convert(
+        text="The first move is what sets everything in motion.",
+        voice_id="JBFqnCBsd6RMkjVDRZzb",
+        model_id="eleven_multilingual_v2",
+        output_format="mp3_44100_128",
+    )
+
+    play(audio)
+
 
 if __name__ == "__main__":
     main()
