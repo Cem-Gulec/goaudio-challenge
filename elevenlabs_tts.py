@@ -49,15 +49,55 @@ def get_voice_settings(emotion):
     """
     Get VoiceSettings object based on emotion.
     Returns VoiceSettings object with appropriate parameters.
+    
+    Parameters tuned for German emotions:
+    - stability: Controls voice consistency (0.0-1.0)
+        Lower values = more variation/expressiveness
+        Higher values = more stable/consistent
+    - similarity_boost: Controls voice authenticity (0.0-1.0)
+        Lower values = more room for expression
+        Higher values = closer to original voice
     """
     emotion_params = {
-        'besorgt': VoiceSettings(stability=0.3, similarity_boost=0.7, style=0.0, use_speaker_boost=True),      # More variation, higher similarity for worried tone
-        'angry': VoiceSettings(stability=0.1, similarity_boost=0.8, style=0.0, use_speaker_boost=True),        # High variation, high similarity for anger
-        'happy': VoiceSettings(stability=0.7, similarity_boost=0.6, style=0.0, use_speaker_boost=True),        # More stable, moderate similarity for happiness
-        'sad': VoiceSettings(stability=0.5, similarity_boost=0.8, style=0.0, use_speaker_boost=True),          # Moderate stability, high similarity for sadness
-        'excited': VoiceSettings(stability=0.2, similarity_boost=0.6, style=0.0, use_speaker_boost=True),      # More variation, moderate similarity for excitement
-        'calm': VoiceSettings(stability=0.8, similarity_boost=0.4, style=0.0, use_speaker_boost=True),         # High stability, lower similarity for calmness
-        None: VoiceSettings(stability=0.5, similarity_boost=0.5, style=0.0, use_speaker_boost=True)            # Default values when no emotion is specified
+        # Besorgt (worried) - moderate variation with high authenticity
+        'besorgt': VoiceSettings(
+            stability=0.35,           # Some variation to express concern
+            similarity_boost=0.75,    # High authenticity for believable worry
+            style=0.0, 
+            use_speaker_boost=True
+        ),
+        
+        # Flüsternd (whispering) - high variation with moderate authenticity
+        'flüsternd': VoiceSettings(
+            stability=0.15,           # High variation for whisper effect
+            similarity_boost=0.55,    # Lower authenticity to allow for whisper
+            style=0.0, 
+            use_speaker_boost=True
+        ),
+        
+        # Aufgeregt (excited) - very high variation with moderate authenticity
+        'aufgeregt': VoiceSettings(
+            stability=0.10,           # Very high variation for excitement
+            similarity_boost=0.60,    # Moderate authenticity for natural excitement
+            style=0.0, 
+            use_speaker_boost=True
+        ),
+        
+        # Ängstlich (anxious) - moderate-high variation with high authenticity
+        'ängstlich': VoiceSettings(
+            stability=0.25,           # Significant variation for anxiety
+            similarity_boost=0.80,    # High authenticity for believable anxiety
+            style=0.0, 
+            use_speaker_boost=True
+        ),
+        
+        # Default values when no emotion is specified
+        None: VoiceSettings(
+            stability=0.50,
+            similarity_boost=0.50,
+            style=0.0,
+            use_speaker_boost=True
+        )
     }
     
     return emotion_params.get(emotion, emotion_params[None])
