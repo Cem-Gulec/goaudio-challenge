@@ -2,12 +2,13 @@ import re
 import os
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
-from elevenlabs import play
+from elevenlabs import play, VoiceSettings
 
 def parse_dialogue(text):
     lines = text.strip().split('\n')
-    current_speaker = None
     dialogue_parts = []
+    current_speaker = None
+    current_emotion = None
     current_line = ""
     
     for line in lines:
@@ -15,29 +16,49 @@ def parse_dialogue(text):
         if not line:  # Skip empty lines
             continue
             
-        speaker_match = re.match(r'\[(\w+)\]:', line)
+        # Pattern to match: Character name followed by optional emotion in parentheses
+        speaker_match = re.match(r'(\w+)(?:\s*\((.*?)\))?$', line)
+        
         if speaker_match:
             # If we have a previous speaker and line, save it before starting new one
             if current_speaker and current_line:
-                dialogue_parts.append((current_speaker, current_line.strip()))
+                dialogue_parts.append((current_speaker, current_emotion, current_line.strip()))
             
-            # Start new speaker and line
+            # Start new speaker, emotion, and line
             current_speaker = speaker_match.group(1)
-            # Remove the speaker tag from the line
-            current_line = re.sub(r'\[\w+\]:', '', line).strip()
+            current_emotion = speaker_match.group(2) if speaker_match.group(2) else None
+            current_line = ""
         else:
-            # Only append to current line if we have a current speaker
+            # If no speaker match, this is dialogue text
             if current_speaker:
                 current_line += " " + line
     
+    # Add the last dialogue part if exists
     if current_speaker and current_line:
-        dialogue_parts.append((current_speaker, current_line.strip()))
+        dialogue_parts.append((current_speaker, current_emotion, current_line.strip()))
     
     return dialogue_parts
 
 def get_voice_id(speaker, voice_ids):
     """Get the voice ID for a given speaker."""
     return voice_ids.get(speaker.lower(), None)
+
+def get_voice_settings(emotion):
+    """
+    Get VoiceSettings object based on emotion.
+    Returns VoiceSettings object with appropriate parameters.
+    """
+    emotion_params = {
+        'besorgt': VoiceSettings(stability=0.3, similarity_boost=0.7, style=0.0, use_speaker_boost=True),      # More variation, higher similarity for worried tone
+        'angry': VoiceSettings(stability=0.1, similarity_boost=0.8, style=0.0, use_speaker_boost=True),        # High variation, high similarity for anger
+        'happy': VoiceSettings(stability=0.7, similarity_boost=0.6, style=0.0, use_speaker_boost=True),        # More stable, moderate similarity for happiness
+        'sad': VoiceSettings(stability=0.5, similarity_boost=0.8, style=0.0, use_speaker_boost=True),          # Moderate stability, high similarity for sadness
+        'excited': VoiceSettings(stability=0.2, similarity_boost=0.6, style=0.0, use_speaker_boost=True),      # More variation, moderate similarity for excitement
+        'calm': VoiceSettings(stability=0.8, similarity_boost=0.4, style=0.0, use_speaker_boost=True),         # High stability, lower similarity for calmness
+        None: VoiceSettings(stability=0.5, similarity_boost=0.5, style=0.0, use_speaker_boost=True)            # Default values when no emotion is specified
+    }
+    
+    return emotion_params.get(emotion, emotion_params[None])
 
 def main():
     # Initialize the client
@@ -50,40 +71,38 @@ def main():
     client = ElevenLabs(api_key=api_key)
 
     # Map character names to their voice IDs using default voices
-    # Rachel for Emma and Josh for Leo
     voice_ids = {
-        'emma': "21m00Tcm4TlvDq8ikWAM",
-        'leo': "TxGEqnHWrfWFTfGW9XjX"
+        'emma': "21m00Tcm4TlvDq8ikWAM",  # Rachel voice ID
+        'leo': "TxGEqnHWrfWFTfGW9XjX"    # Josh voice ID
     }
 
     dialogue = """
-    [Emma]:
-    Also, Leo, was hast du mir hier überhaupt zeigen wollen?
-
-    [Leo]:
-    Geduld, Emma. Es ist ein bisschen… wie soll ich sagen… next-level cool.
-
-    [Emma]:
-    Deine Überraschungen waren nicht immer cool. Erinnere dich an die „Super-Höhle“ voller Spinnen.
-
-    [Leo]:
-    Hey, das war ein Abenteuer! Und diesmal gibt’s keine Spinnen. Versprochen.
+    Emma (besorgt)
+    Leo, ich hab ein really bad feeling about this!
+    Leo
+    Bleib ruhig. Ich glaube… es aktiviert sich… oder so was.
+    Emma
+    Oder so was? Das ist nicht beruhigend!
     """
 
     dialogue_parts = parse_dialogue(dialogue)
 
-    # Process and play each line with the appropriate voice
-    for speaker, text in dialogue_parts:
-        print(f"Speaking ({speaker}): {text}")
+    # Process and play each line with the appropriate voice and emotion
+    for speaker, emotion, text in dialogue_parts:
+        print(f"Speaking ({speaker}{' - ' + emotion if emotion else ''}): {text}")
         
         voice_id = get_voice_id(speaker, voice_ids)
         if voice_id:
             try:
+                # Get emotion-specific voice settings
+                voice_settings = get_voice_settings(emotion)
+                
                 audio = client.text_to_speech.convert(
                     text=text,
                     voice_id=voice_id,
                     model_id="eleven_multilingual_v2",
                     output_format="mp3_44100_128",
+                    voice_settings=voice_settings
                 )
                 play(audio)
             except Exception as e:
