@@ -3,6 +3,8 @@ import os
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
 from elevenlabs import play, VoiceSettings
+from pydub import AudioSegment
+import io
 
 def parse_dialogue(text):
     lines = text.strip().split('\n')
@@ -87,9 +89,12 @@ def main():
 
     dialogue_parts = parse_dialogue(dialogue)
 
-    # Process and play each line with the appropriate voice and emotion
+    # Process each line and collect audio segments
+    combined_audio = AudioSegment.empty()
+    silence = AudioSegment.silent(duration=1000)  # 1 second silence between lines
+
     for speaker, emotion, text in dialogue_parts:
-        print(f"Speaking ({speaker}{' - ' + emotion if emotion else ''}): {text}")
+        print(f"Converting ({speaker}{' - ' + emotion if emotion else ''}): {text}")
         
         voice_id = get_voice_id(speaker, voice_ids)
         if voice_id:
@@ -97,18 +102,35 @@ def main():
                 # Get emotion-specific voice settings
                 voice_settings = get_voice_settings(emotion)
                 
-                audio = client.text_to_speech.convert(
+                audio = b''.join(list(client.text_to_speech.convert(
                     text=text,
                     voice_id=voice_id,
                     model_id="eleven_multilingual_v2",
                     output_format="mp3_44100_128",
                     voice_settings=voice_settings
-                )
-                play(audio)
+                )))
+                
+                # Convert audio bytes to AudioSegment
+                audio_segment = AudioSegment.from_mp3(io.BytesIO(audio))
+                
+                # Add silence between lines
+                if len(combined_audio) > 0:
+                    combined_audio += silence
+                
+                # Add the new audio segment
+                combined_audio += audio_segment
+                
             except Exception as e:
                 print(f"Error converting text to speech for {speaker}: {e}")
         else:
             print(f"No voice ID found for speaker: {speaker}")
+
+    # Save the combined audio
+    output_filename = "combined_dialogue.mp3"
+    combined_audio.export(output_filename, format="mp3")
+    print(f"\nSaved combined dialogue to: {output_filename}")
+    
+    play(combined_audio.export(format="mp3").read())
 
 if __name__ == "__main__":
     main()
