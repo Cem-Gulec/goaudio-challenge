@@ -102,6 +102,44 @@ def get_voice_settings(emotion):
     
     return emotion_params.get(emotion, emotion_params[None])
 
+def process_dialogue(client, voice_ids, dialogue_parts, silence_duration):
+    # Process each line and collect audio segments
+    combined_audio = AudioSegment.empty()
+
+    for speaker, emotion, text in dialogue_parts:
+        print(f"Converting ({speaker}{' - ' + emotion if emotion else ''}): {text}")
+        
+        voice_id = get_voice_id(speaker, voice_ids)
+        if voice_id:
+            try:
+                # Get emotion-specific voice settings
+                voice_settings = get_voice_settings(emotion)
+                
+                audio = b''.join(list(client.text_to_speech.convert(
+                    text=text,
+                    voice_id=voice_id,
+                    model_id="eleven_multilingual_v2",
+                    output_format="mp3_44100_128",
+                    voice_settings=voice_settings
+                )))
+                
+                # Convert audio bytes to AudioSegment
+                audio_segment = AudioSegment.from_mp3(io.BytesIO(audio))
+                
+                # Add silence between lines
+                if len(combined_audio) > 0:
+                    combined_audio += silence_duration
+                
+                # Add the new audio segment
+                combined_audio += audio_segment
+                
+            except Exception as e:
+                print(f"Error converting text to speech for {speaker}: {e}")
+        else:
+            print(f"No voice ID found for speaker: {speaker}")
+    
+    return combined_audio
+
 def main():
     # Initialize the client
     load_dotenv()
@@ -128,42 +166,9 @@ def main():
     """
 
     dialogue_parts = parse_dialogue(dialogue)
+    silence_duration = AudioSegment.silent(duration=1000)  # 1 second silence between lines
 
-    # Process each line and collect audio segments
-    combined_audio = AudioSegment.empty()
-    silence = AudioSegment.silent(duration=1000)  # 1 second silence between lines
-
-    for speaker, emotion, text in dialogue_parts:
-        print(f"Converting ({speaker}{' - ' + emotion if emotion else ''}): {text}")
-        
-        voice_id = get_voice_id(speaker, voice_ids)
-        if voice_id:
-            try:
-                # Get emotion-specific voice settings
-                voice_settings = get_voice_settings(emotion)
-                
-                audio = b''.join(list(client.text_to_speech.convert(
-                    text=text,
-                    voice_id=voice_id,
-                    model_id="eleven_multilingual_v2",
-                    output_format="mp3_44100_128",
-                    voice_settings=voice_settings
-                )))
-                
-                # Convert audio bytes to AudioSegment
-                audio_segment = AudioSegment.from_mp3(io.BytesIO(audio))
-                
-                # Add silence between lines
-                if len(combined_audio) > 0:
-                    combined_audio += silence
-                
-                # Add the new audio segment
-                combined_audio += audio_segment
-                
-            except Exception as e:
-                print(f"Error converting text to speech for {speaker}: {e}")
-        else:
-            print(f"No voice ID found for speaker: {speaker}")
+    combined_audio = process_dialogue(client, voice_ids, dialogue_parts, silence_duration)
 
     # Save the combined audio
     output_filename = "combined_dialogue.mp3"
