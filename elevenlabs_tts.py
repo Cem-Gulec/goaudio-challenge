@@ -9,41 +9,102 @@ from deep_translator import GoogleTranslator
 import sys
 from contextlib import redirect_stdout
 from file_parser import file_parser
+import json
 
-def parse_dialogue(text):
+def parse_screenplay(text):
+    # Split text into lines and initialize variables
     lines = text.strip().split('\n')
-    dialogue_parts = []
+    parsed_parts = []
+    current_tag = None
     current_speaker = None
     current_emotion = None
-    current_line = ""
+    current_content = ""
     
     for line in lines:
         line = line.strip()
         if not line:  # Skip empty lines
             continue
             
-        # Pattern to match: Character name followed by optional emotion in parentheses
-        speaker_match = re.match(r'(\w+)(?:\s*\((.*?)\))?$', line)
+        # Check for tag markers [Tag Name]:
+        tag_match = re.match(r'\[(.*?)\]:$', line)
         
-        if speaker_match:
-            # If we have a previous speaker and line, save it before starting new one
-            if current_speaker and current_line:
-                dialogue_parts.append((current_speaker, current_emotion, current_line.strip()))
+        # Don't process as tag if it's a character tag
+        if tag_match and not re.match(r'\[((?:Leo|Emma)(?:\s*\((.*?)\))?)\]:$', line):
+            # Save previous content if exists
+            if current_tag or current_speaker:
+                if current_speaker:
+                    parsed_parts.append({
+                        'type': 'dialogue',
+                        'speaker': current_speaker,
+                        'emotion': current_emotion,
+                        'content': current_content.strip()
+                    })
+                else:
+                    parsed_parts.append({
+                        'type': 'description',
+                        'tag': current_tag,
+                        'content': current_content.strip()
+                    })
             
-            # Start new speaker, emotion, and line
-            current_speaker = speaker_match.group(1)
-            current_emotion = speaker_match.group(2) if speaker_match.group(2) else None
-            current_line = ""
+            # Start new tag
+            current_tag = tag_match.group(1)
+            current_speaker = None
+            current_emotion = None
+            current_content = ""
+            continue
+            
+        # Check for character dialogue: [Name] or [Name (emotion)]
+        speaker_match = re.match(r'\[((?:Leo|Emma)(?:\s*\((.*?)\))?)\]:$', line)
+        if speaker_match:
+            # Save previous content if exists
+            if current_tag or current_speaker:
+                if current_speaker:
+                    parsed_parts.append({
+                        'type': 'dialogue',
+                        'speaker': current_speaker,
+                        'emotion': current_emotion,
+                        'content': current_content.strip()
+                    })
+                else:
+                    parsed_parts.append({
+                        'type': 'description',
+                        'tag': current_tag,
+                        'content': current_content.strip()
+                    })
+            
+            # Start new speaker
+            current_tag = None
+            speaker_full = speaker_match.group(1)
+            if '(' in speaker_full:
+                current_speaker = speaker_full.split('(')[0].strip()
+                current_emotion = speaker_full.split('(')[1].rstrip(')')
+            else:
+                current_speaker = speaker_full
+                current_emotion = None
+            current_content = ""
+            continue
+        
+        # If we reach here, this is content text
+        if current_tag or current_speaker:
+            current_content += " " + line
+    
+    # Add the final part if exists
+    if current_tag or current_speaker:
+        if current_speaker:
+            parsed_parts.append({
+                'type': 'dialogue',
+                'speaker': current_speaker,
+                'emotion': current_emotion,
+                'content': current_content.strip()
+            })
         else:
-            # If no speaker match, this is dialogue text
-            if current_speaker:
-                current_line += " " + line
+            parsed_parts.append({
+                'type': 'description',
+                'tag': current_tag,
+                'content': current_content.strip()
+            })
     
-    # Add the last dialogue part if exists
-    if current_speaker and current_line:
-        dialogue_parts.append((current_speaker, current_emotion, current_line.strip()))
-    
-    return dialogue_parts
+    return parsed_parts
 
 def get_voice_id(speaker, voice_ids):
     """Get the voice ID for a given speaker."""
@@ -201,16 +262,21 @@ def main():
     
     parser_output = run_parser()
 
-    dialogue = """
-    Emma (besorgt)
-    Leo, ich hab ein really bad feeling about this!
-    Leo
-    Bleib ruhig. Ich glaube… es aktiviert sich… oder so was.
-    Emma
-    Oder so was? Das ist nicht beruhigend!
-    """
+    text = """[Environment Description]:
+    Wind pfeift durch die Bäume.
 
-    dialogue_parts = parse_dialogue(dialogue)
+    [Emma (besorgt)]:
+    Leo, ich hab ein really bad feeling about this!
+
+    [Leo]:
+    Bleib ruhig."""
+
+    result = parse_screenplay(parser_output)
+
+    pretty_json = json.dumps(result, indent=4, ensure_ascii=False)
+    print(pretty_json)
+
+    dialogue_parts = parse_screenplay(dialogue)
     silence_duration = AudioSegment.silent(duration=1000)  # 1 second silence between lines
 
     combined_audio = process_dialogue(client, voice_ids, dialogue_parts, silence_duration)
