@@ -4,12 +4,19 @@ from elevenlabs.client import ElevenLabs
 from elevenlabs import play
 from pydub import AudioSegment
 import io
+from deep_translator import GoogleTranslator
+
+def translate_to_english(text):
+    translator = GoogleTranslator(source='de', target='en')
+    return translator.translate(text)
 
 def generate_sound_effect(client, text):
+    print("Translating German description...")
+    english_text = translate_to_english(text)
+    
     print("Generating sound effects...")
-
     result = client.text_to_sound_effects.convert(
-        text=text,
+        text=english_text,
         duration_seconds=10,
         prompt_influence=0.3,
     )
@@ -27,7 +34,7 @@ if __name__ == "__main__":
     api_key = os.getenv("ELEVENLABS_API_KEY")
     client = ElevenLabs(api_key=api_key)
     
-    description = "A high-pitched sound mingles with the roar, slowly increasing and sounding almost like the roar of an engine."
+    description = "Ein hochfrequenter Ton vermischt sich mit dem Brüllen, wird langsam lauter und klingt fast wie das Dröhnen eines Motors."
     
     audio_data = generate_sound_effect(client, description)
 
