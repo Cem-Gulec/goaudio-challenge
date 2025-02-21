@@ -5,6 +5,7 @@ from elevenlabs.client import ElevenLabs
 from elevenlabs import play, VoiceSettings
 from pydub import AudioSegment
 import io
+from deep_translator import GoogleTranslator
 
 def parse_dialogue(text):
     lines = text.strip().split('\n')
@@ -140,11 +141,17 @@ def process_dialogue(client, voice_ids, dialogue_parts, silence_duration):
     
     return combined_audio
 
-def generate_sound_effect(client, text):
-    print("Generating sound effects...")
+def translate_to_english(text):
+    translator = GoogleTranslator(source='de', target='en')
+    return translator.translate(text)
 
+def generate_sound_effect(client, text):
+    print("Translating German description...")
+    english_text = translate_to_english(text)
+    
+    print("Generating sound effects...")
     result = client.text_to_sound_effects.convert(
-        text=text,
+        text=english_text,
         duration_seconds=10,
         prompt_influence=0.3,
     )
@@ -188,7 +195,7 @@ def main():
     combined_audio = process_dialogue(client, voice_ids, dialogue_parts, silence_duration)
 
     # background audio generation
-    description = "A large, glowing artifact floats in the middle, surrounded by a deep, vibrating hum. The buzzing is barely audible, but you can feel it in your chest."
+    description = "Die Tür knarrt laut, als Leo sie aufstößt, wie ein alter, schwerer Holzschrank. Ein schwaches, hallendes Geräusch folgt, als die Tür gegen den Stamm zurückschwingt"
     background_audio = generate_sound_effect(client, description)
 
     play(combined_audio.export(format="mp3").read())
