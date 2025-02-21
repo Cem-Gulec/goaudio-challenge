@@ -1,6 +1,9 @@
 from dotenv import load_dotenv
 import os
 from elevenlabs.client import ElevenLabs
+from elevenlabs import play
+from pydub import AudioSegment
+import io
 
 def generate_sound_effect(client, text):
     print("Generating sound effects...")
@@ -13,12 +16,11 @@ def generate_sound_effect(client, text):
 
     # Combine all chunks into a single bytes object
     audio_data = b''.join(result)
-    return audio_data
 
-def save_audio(audio_data: bytes, output_path: str):
-    with open(output_path, "wb") as f:
-        f.write(audio_data)
-    print(f"Audio saved to {output_path}")
+    # convert bytes object into AudioSegment
+    audio_segment = AudioSegment.from_mp3(io.BytesIO(audio_data))
+
+    return audio_segment
 
 if __name__ == "__main__":
     load_dotenv()
@@ -28,5 +30,7 @@ if __name__ == "__main__":
     description = "A high-pitched sound mingles with the roar, slowly increasing and sounding almost like the roar of an engine."
     
     audio_data = generate_sound_effect(client, description)
-    
-    save_audio(audio_data, "output.mp3")
+
+    play(audio_data.export(format="mp3").read())
+
+    audio_data.export("output.mp3", format="mp3")
