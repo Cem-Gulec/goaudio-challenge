@@ -190,7 +190,7 @@ def read_docx(file_path):
     
     return parsed_content
 
-def main():
+def file_parser():
     file_path = 'Skript.docx'
     content = read_docx(file_path)
     
@@ -213,4 +213,4 @@ def main():
             print(f"{item['content']}")
 
 if __name__ == "__main__":
-    main()
+    file_parser()

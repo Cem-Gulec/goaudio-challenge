@@ -6,6 +6,9 @@ from elevenlabs import play, VoiceSettings
 from pydub import AudioSegment
 import io
 from deep_translator import GoogleTranslator
+import sys
+from contextlib import redirect_stdout
+from file_parser import file_parser
 
 def parse_dialogue(text):
     lines = text.strip().split('\n')
@@ -164,6 +167,22 @@ def generate_sound_effect(client, text):
 
     return audio_segment
 
+def run_parser():
+    # Create a string buffer to capture the output
+    output_buffer = io.StringIO()
+    
+    # Redirect stdout to our buffer
+    with redirect_stdout(output_buffer):
+        file_parser()
+    
+    # Get the captured output as a string
+    captured_output = output_buffer.getvalue()
+    
+    # Close the buffer
+    output_buffer.close()
+    
+    return captured_output
+
 def main():
     # Initialize the client
     load_dotenv()
@@ -179,6 +198,8 @@ def main():
         'emma': "21m00Tcm4TlvDq8ikWAM",  # Rachel voice ID
         'leo': "TxGEqnHWrfWFTfGW9XjX"    # Josh voice ID
     }
+    
+    parser_output = run_parser()
 
     dialogue = """
     Emma (besorgt)
