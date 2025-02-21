@@ -140,6 +140,23 @@ def process_dialogue(client, voice_ids, dialogue_parts, silence_duration):
     
     return combined_audio
 
+def generate_sound_effect(client, text):
+    print("Generating sound effects...")
+
+    result = client.text_to_sound_effects.convert(
+        text=text,
+        duration_seconds=10,
+        prompt_influence=0.3,
+    )
+
+    # Combine all chunks into a single bytes object
+    audio_data = b''.join(result)
+
+    # convert bytes object into AudioSegment
+    audio_segment = AudioSegment.from_mp3(io.BytesIO(audio_data))
+
+    return audio_segment
+
 def main():
     # Initialize the client
     load_dotenv()
@@ -170,12 +187,16 @@ def main():
 
     combined_audio = process_dialogue(client, voice_ids, dialogue_parts, silence_duration)
 
+    # background audio generation
+    description = "A large, glowing artifact floats in the middle, surrounded by a deep, vibrating hum. The buzzing is barely audible, but you can feel it in your chest."
+    background_audio = generate_sound_effect(client, description)
+
+    play(combined_audio.export(format="mp3").read())
+
     # Save the combined audio
     output_filename = "combined_dialogue.mp3"
     combined_audio.export(output_filename, format="mp3")
     print(f"\nSaved combined dialogue to: {output_filename}")
-    
-    play(combined_audio.export(format="mp3").read())
 
 if __name__ == "__main__":
     main()
