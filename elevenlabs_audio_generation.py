@@ -2,28 +2,31 @@ from dotenv import load_dotenv
 import os
 from elevenlabs.client import ElevenLabs
 
-load_dotenv()
-api_key = os.getenv("ELEVENLABS_API_KEY")
-
-elevenlabs = ElevenLabs(api_key=api_key)
-
-
-def generate_sound_effect(text: str, output_path: str):
+def generate_sound_effect(client, text):
     print("Generating sound effects...")
 
-    result = elevenlabs.text_to_sound_effects.convert(
+    result = client.text_to_sound_effects.convert(
         text=text,
-        duration_seconds=10,  # Optional
-        prompt_influence=0.3,  # Optional
+        duration_seconds=10,
+        prompt_influence=0.3,
     )
 
-    with open(output_path, "wb") as f:
-        for chunk in result:
-            f.write(chunk)
+    # Combine all chunks into a single bytes object
+    audio_data = b''.join(result)
+    return audio_data
 
+def save_audio(audio_data: bytes, output_path: str):
+    with open(output_path, "wb") as f:
+        f.write(audio_data)
     print(f"Audio saved to {output_path}")
 
-
 if __name__ == "__main__":
+    load_dotenv()
+    api_key = os.getenv("ELEVENLABS_API_KEY")
+    client = ElevenLabs(api_key=api_key)
+    
     description = "A high-pitched sound mingles with the roar, slowly increasing and sounding almost like the roar of an engine."
-    generate_sound_effect(description, "output.mp3")
+    
+    audio_data = generate_sound_effect(client, description)
+    
+    save_audio(audio_data, "output.mp3")
