@@ -167,44 +167,35 @@ def get_voice_settings(emotion):
     
     return emotion_params.get(emotion, emotion_params[None])
 
-def process_dialogue(client, voice_ids, dialogue_parts, silence_duration):
+def process_dialogue(client, voice_ids, item):
     # Process each line and collect audio segments
-    combined_audio = AudioSegment.empty()
-
-    for speaker, emotion, text in dialogue_parts:
-        print(f"Converting ({speaker}{' - ' + emotion if emotion else ''}): {text}")
-        
-        voice_id = get_voice_id(speaker, voice_ids)
-        if voice_id:
-            try:
-                # Get emotion-specific voice settings
-                voice_settings = get_voice_settings(emotion)
-                
-                audio = b''.join(list(client.text_to_speech.convert(
-                    text=text,
-                    voice_id=voice_id,
-                    model_id="eleven_multilingual_v2",
-                    output_format="mp3_44100_128",
-                    voice_settings=voice_settings
-                )))
-                
-                # Convert audio bytes to AudioSegment
-                audio_segment = AudioSegment.from_mp3(io.BytesIO(audio))
-                
-                # Add silence between lines
-                if len(combined_audio) > 0:
-                    combined_audio += silence_duration
-                
-                # Add the new audio segment
-                combined_audio += audio_segment
-                
-            except Exception as e:
-                print(f"Error converting text to speech for {speaker}: {e}")
-        else:
-            print(f"No voice ID found for speaker: {speaker}")
+    _, speaker, emotion, text = item.values()
+    voice_id = get_voice_id(speaker, voice_ids)
     
-    return combined_audio
-
+    print(f"Converting ({speaker}{' - ' + emotion if emotion else ''}): {text}")    
+    if voice_id:
+        try:
+            # Get emotion-specific voice settings
+            voice_settings = get_voice_settings(emotion)
+            
+            audio = b''.join(list(client.text_to_speech.convert(
+                text=text,
+                voice_id=voice_id,
+                model_id="eleven_multilingual_v2",
+                output_format="mp3_44100_128",
+                voice_settings=voice_settings
+            )))
+            
+            # Convert audio bytes to AudioSegment
+            audio_segment = AudioSegment.from_mp3(io.BytesIO(audio))
+            
+            return audio_segment
+            
+        except Exception as e:
+            print(f"Error converting text to speech for {speaker}: {e}")
+    else:
+        print(f"No voice ID found for speaker: {speaker}")
+    
 def translate_to_english(text):
     translator = GoogleTranslator(source='de', target='en')
     return translator.translate(text)
@@ -262,35 +253,41 @@ def main():
     
     parser_output = run_parser()
 
-    text = """[Environment Description]:
-    Wind pfeift durch die Bäume.
+    parsed_screenplay = parse_screenplay(parser_output)
 
-    [Emma (besorgt)]:
-    Leo, ich hab ein really bad feeling about this!
-
-    [Leo]:
-    Bleib ruhig."""
-
-    result = parse_screenplay(parser_output)
-
-    pretty_json = json.dumps(result, indent=4, ensure_ascii=False)
+    pretty_json = json.dumps(parsed_screenplay, indent=4, ensure_ascii=False)
     print(pretty_json)
 
-    dialogue_parts = parse_screenplay(dialogue)
-    silence_duration = AudioSegment.silent(duration=1000)  # 1 second silence between lines
+    # In the highest level, script is divided into two categories: description, dialogue
+    # Description has 3 tags: Environment, Background and Additional Description.
+    # Dialogue has 2 characters: Emma and Leo.
+    combined_audio = AudioSegment.empty()
+    silence_duration = AudioSegment.silent(duration=1000)  # ms
 
-    combined_audio = process_dialogue(client, voice_ids, dialogue_parts, silence_duration)
+    for item in parsed_screenplay:
+        # Add silence between lines
+        if len(combined_audio) > 0:
+            combined_audio += silence_duration
+            
+        if item['type'] == 'description':
+            pass
+        elif item['type'] == 'dialogue':
+            combined_audio += process_dialogue(client, voice_ids, item)
+        else:
+            raise ValueError("There is something wrong with the item type!")
 
+    play(combined_audio.export(format="mp3").read())
+
+    '''
     # background audio generation
     description = "Die Tür knarrt laut, als Leo sie aufstößt, wie ein alter, schwerer Holzschrank. Ein schwaches, hallendes Geräusch folgt, als die Tür gegen den Stamm zurückschwingt"
     background_audio = generate_sound_effect(client, description)
-
-    play(combined_audio.export(format="mp3").read())
 
     # Save the combined audio
     output_filename = "combined_dialogue.mp3"
     combined_audio.export(output_filename, format="mp3")
     print(f"\nSaved combined dialogue to: {output_filename}")
+    '''
 
 if __name__ == "__main__":
     main()
