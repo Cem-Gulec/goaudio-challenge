@@ -167,11 +167,8 @@ def get_voice_settings(emotion):
     
     return emotion_params.get(emotion, emotion_params[None])
 
-def process_dialogue(client, voice_ids, item):
+def process_dialogue(client, voice_id, speaker, emotion, text):
     # Process each line and collect audio segments
-    _, speaker, emotion, text = item.values()
-    voice_id = get_voice_id(speaker, voice_ids)
-    
     print(f"Converting ({speaker}{' - ' + emotion if emotion else ''}): {text}")    
     if voice_id:
         try:
@@ -248,7 +245,8 @@ def main():
     # Map character names to their voice IDs using default voices
     voice_ids = {
         'emma': "21m00Tcm4TlvDq8ikWAM",  # Rachel voice ID
-        'leo': "TxGEqnHWrfWFTfGW9XjX"    # Josh voice ID
+        'leo': "TxGEqnHWrfWFTfGW9XjX",    # Josh voice ID
+        'otto': "FTNCalFNG5bRnkkaP5Ug"
     }
     
     parser_output = run_parser()
@@ -270,11 +268,24 @@ def main():
             combined_audio += silence_duration
             
         if item['type'] == 'description':
-            pass
+            # Narrator
+            if item['tag'] in {"Environment Description", "Additional Description"}:
+                voice_id = voice_ids['leo']
+                speaker = 'leo'
+                emotion = None
+                text = item["content"]
+                
+                combined_audio += process_dialogue(client, voice_id, speaker, emotion, text)
+            elif item['tag'] == "Background Description":
+                pass
+            else:
+                raise ValueError("There is something wrong with the description item!")
         elif item['type'] == 'dialogue':
-            combined_audio += process_dialogue(client, voice_ids, item)
+            _, speaker, emotion, text = item.values()
+            voice_id = get_voice_id(speaker, voice_ids)
+            combined_audio += process_dialogue(client, voice_id, speaker, emotion, text)
         else:
-            raise ValueError("There is something wrong with the item type!")
+            raise ValueError("There is something wrong with the dialogue item!")
 
     play(combined_audio.export(format="mp3").read())
 
