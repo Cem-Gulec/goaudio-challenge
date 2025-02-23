@@ -1,7 +1,7 @@
 import boto3
 
 # Initialize Amazon Polly client
-polly_client = boto3.client("polly", region_name="us-east-1")  # Change region if needed
+polly_client = boto3.client("polly", region_name="us-east-1")
 
 # SSML text with whispering effect
 ssml_text = """
@@ -14,7 +14,7 @@ ssml_text = """
 response = polly_client.synthesize_speech(
     Text=ssml_text,
     TextType="ssml",
-    VoiceId="Matthew",  # "Matthew" supports whispering
+    VoiceId="Matthew",
     OutputFormat="mp3"
 )
 
