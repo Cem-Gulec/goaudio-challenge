@@ -277,7 +277,8 @@ def main():
                 
                 combined_audio += process_dialogue(client, voice_id, speaker, emotion, text)
             elif item['tag'] == "Background Description":
-                pass
+                description = item['content']
+                combined_audio += generate_sound_effect(client, description)
             else:
                 raise ValueError("There is something wrong with the description item!")
         elif item['type'] == 'dialogue':
@@ -287,18 +288,10 @@ def main():
         else:
             raise ValueError("There is something wrong with the dialogue item!")
 
-    play(combined_audio.export(format="mp3").read())
-
-    '''
-    # background audio generation
-    description = "Die Tür knarrt laut, als Leo sie aufstößt, wie ein alter, schwerer Holzschrank. Ein schwaches, hallendes Geräusch folgt, als die Tür gegen den Stamm zurückschwingt"
-    background_audio = generate_sound_effect(client, description)
-
     # Save the combined audio
     output_filename = "combined_dialogue.mp3"
     combined_audio.export(output_filename, format="mp3")
     print(f"\nSaved combined dialogue to: {output_filename}")
-    '''
 
 if __name__ == "__main__":
     main()
