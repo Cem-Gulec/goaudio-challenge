@@ -143,7 +143,7 @@ def main():
         combined_audio += audio_segment + pause
 
     # Export the final audio file
-    output_file = "dialogue_with_emotion.mp3"
+    output_file = "aws_output.mp3"
     combined_audio.export(output_file, format="mp3")
     print(f"Audio saved to {output_file}")
 

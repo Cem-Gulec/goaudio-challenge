@@ -84,7 +84,7 @@ def main():
         all_audio_data.append(audio_data)
 
     # Write all audio data to a single file
-    with open("combined_dialogue.mp3", "wb") as outfile:
+    with open("openai_output.mp3", "wb") as outfile:
         for audio_data in all_audio_data:
             outfile.write(audio_data)
 
