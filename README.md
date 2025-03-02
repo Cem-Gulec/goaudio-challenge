@@ -2,13 +2,7 @@
 
 We just concluded a meeting with a publisher who is interested in creating an audio drama (Hörspiel) with us. To get a sense of the possibilities, they would like to get a demo and have provided us with a script for this purpose. They are looking for a 1-minute audio sample showcasing what the final audio drama could sound like and would also like to understand the process behind it. We need to keep in mind that this needs to build a scalable solution in the long-term.
 
-<!-- GETTING STARTED -->
-## Getting Started
-
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
-### Prerequisites
+## Prerequisites
 
 <table>
   <tr>
@@ -39,7 +33,7 @@ To get a local copy up and running follow these simple example steps.
 
 
 
-### Installation
+## Installation
 
 1. Create an .env file with the following content
    ```sh
