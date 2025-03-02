@@ -66,5 +66,3 @@ To get a local copy up and running follow these simple example steps.
    pip install -r requirements.txt[aws]
    pip install -r requirements.txt[openai]
    ```
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
