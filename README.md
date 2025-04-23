@@ -1,6 +1,6 @@
 ## Description of The Project
 
-We just concluded a meeting with a publisher who is interested in creating an audio drama (Hörspiel) with us. To get a sense of the possibilities, they would like to get a demo and have provided us with a script for this purpose. They are looking for a 1-minute audio sample showcasing what the final audio drama could sound like and would also like to understand the process behind it. We need to keep in mind that this needs to build a scalable solution in the long-term.
+The goal of the project is to create a 1-minute audio drama demo based on a provided script to showcase a production from scratch, while also outlining a scalable process.
 
 ## Folder Structure
 - **root/**
